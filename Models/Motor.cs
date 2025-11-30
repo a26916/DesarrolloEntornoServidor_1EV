@@ -1,6 +1,4 @@
-using Models;
-
-namespace Motor;
+namespace Models; 
 public class Motor
 {
     public string Combustible { get; set; } = "";
