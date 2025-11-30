@@ -1,3 +1,7 @@
+CREATE DATABASE ConcesionarioDB;
+
+use ConcesionarioDB;
+
 CREATE TABLE Vehiculo (
     VehiculoID INT PRIMARY KEY IDENTITY(1,1),
     Marca VARCHAR(100) NOT NULL,
