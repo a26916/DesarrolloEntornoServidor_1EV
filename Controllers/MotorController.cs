@@ -1,104 +1,103 @@
-using DTO;
 using Microsoft.AspNetCore.Mvc;
 using Services;
+using Models;
+using DTO;
 
-namespace trabajo_1ev.Controllers;
-
-[ApiController]
-[Route("api/v1/motores")]
-public class MotorController : ControllerBase
+namespace trabajo_1ev.Controllers
 {
-    // Inyección de Dependencia: El Controller depende del Servicio
-    private readonly IMotorService _motorservice;
-
-    public MotorController(IMotorService motorService)
+    [ApiController]
+    [Route("api/v1/motores")]
+    public class MotorController : ControllerBase
     {
-        _motorservice = motorService;
-    }
+        private readonly IMotorService _motorService;
 
-    // --- 1. GET (Read - Lista) ---
-    // GET /api/v1/motores
-    [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<Models.Motor>>> GetMotores()
-    {
-        var motores = await _motorservice.GetAllAsync();
-        return Ok(motores); // 200 OK
-    }
-
-    // --- 2. GET (Read - Detalle) ---
-    // GET /api/v1/motores/{id}
-    [HttpGet("{id:int}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Models.Motor>> GetMotor(int id)
-    {
-        var motor = await _motorservice.GetByIdAsync(id);
-
-        if (motor == null)
+        public MotorController(IMotorService motorService)
         {
-            return NotFound(); // 404 Not Found
+            _motorService = motorService;
         }
 
-        return Ok(motor); // 200 OK
-    }
-
-    // --- 3. POST (Create) ---
-    // POST /api/v1/motores
-    [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<Models.Motor>> PostMotor([FromBody] MotorCreateDTO dto)
-    {
-        // El framework ASP.NET Core verifica las validaciones del DTO automáticamente.
-        if (!ModelState.IsValid)
+        // --- 1. GET (Read - Lista) ---
+        [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<ActionResult<IEnumerable<Motor>>> GetMotores()
         {
-            return BadRequest(ModelState); // 400 Bad Request si falla el DTO (ej: Potencia < 10)
+            var motores = await _motorService.GetAllAsync();
+            return Ok(motores);
         }
 
-        var nuevoMotor = await _motorservice.CreateAsync(dto);
-
-        // 201 Created: Devuelve el objeto creado y la URL de acceso al recurso
-        return CreatedAtAction(nameof(GetMotor), new { id = nuevoMotor.IdMotor }, nuevoMotor);
-    }
-
-    // --- 4. PUT (Update - Completo) ---
-    // PUT /api/v1/motores/{id}
-    [HttpPut("{id:int}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<Models.Motor>> PutMotor(int id, [FromBody] MotorCreateDTO dto)
-    {
-        if (!ModelState.IsValid)
+        // --- 2. GET (Read - Detalle) ---
+        [HttpGet("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult<Motor>> GetMotor(int id)
         {
-            return BadRequest(ModelState);
+            var motor = await _motorService.GetByIdAsync(id);
+
+
+            if (motor == null)
+            {
+                return NotFound($"No se encontró el motor con id {id}");
+            }
+
+            return Ok(motor);
         }
 
-        var motorActualizado = await _motorservice.UpdateAsync(id, dto);
-
-        if (motorActualizado == null)
+        // --- 3. POST (Create) ---
+        [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<Motor>> CreateMotor([FromBody] MotorCreateDTO motorDto)
         {
-            return NotFound(); // 404 Not Found si el ID no existe
+            if (motorDto == null)
+            {
+                return BadRequest("El cuerpo de la solicitud no puede estar vacío");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var nuevoMotor = await _motorService.CreateAsync(motorDto);
+
+            // Retorna un 201 Created y la url para consultar el nuevo objeto
+            return CreatedAtAction(nameof(GetMotor), new { id = nuevoMotor.IdMotor }, nuevoMotor);
         }
 
-        return Ok(motorActualizado); // 200 OK
-    }
-
-    // --- 5. DELETE ---
-    // DELETE /api/v1/motores/{id}
-    [HttpDelete("{id:int}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteMotor(int id)
-    {
-        var result = await _motorservice.DeleteAsync(id);
-
-        if (!result)
+        // --- 4. PUT (Update) ---
+        [HttpPut("{id:int}")]
+        public async Task<ActionResult<Motor>> UpdateMotor(int id, [FromBody] MotorCreateDTO motorDto)
         {
-            return NotFound(); // 404 Not Found si el ID no existe
+            if (motorDto == null)
+                return BadRequest();
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var motorActualizado = await _motorService.UpdateAsync(id, motorDto);
+
+            if (motorActualizado == null)
+            {
+                return NotFound($"No se puede actualizar. El motor con id {id} no existe.");
+            }
+
+            return Ok(motorActualizado);
         }
 
-        return NoContent(); // 204 No Content (Eliminación exitosa sin cuerpo de respuesta)
+        // --- 5. DELETE (Delete) ---
+        [HttpDelete("{id:int}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> DeleteMotor(int id)
+        {
+            var borrado = await _motorService.DeleteAsync(id);
+
+            if (!borrado)
+            {
+                return NotFound($"No se encontró el motor con id {id} para borrar.");
+            }
+
+            return NoContent(); // 204 Sin contenido (éxito al borrar)
+        }
     }
 }
